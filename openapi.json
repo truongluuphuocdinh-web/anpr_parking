@@ -1,0 +1,3053 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "API Quản lý bãi giữ xe ANPR",
+    "description": "\nAPI của **Hệ thống quản lý bãi giữ xe ANPR** (đồ án DAMH): nhận diện biển số, check-in / check-out, tính phí,\nvé tháng, mất thẻ, thống kê và Audit Log. Bãi giả lập 3x3 (ô A1..C3).\n\n### Cách dùng nhanh\n1. Bấm nút **Authorize** (góc phải) -> nhập `admin` / `admin123` (Admin) hoặc `baove` / `baove123` (Bảo vệ) -> **Authorize**.\n2. Chọn một API -> **Try it out** -> **Execute**.\n3. Tải toàn bộ mô tả API dạng JSON tại [`/openapi.json`](/openapi.json).\n\n### Phân quyền\n| Vai trò | Được dùng |\n|---|---|\n| `GUARD` (Bảo vệ) | Auth, Bãi xe, Cổng (quét biển, mất thẻ, di dời), Lịch sử |\n| `ADMIN` | Tất cả của Bảo vệ + Vé tháng, Thống kê, Audit Log, Xuất Excel |\n\nMọi lỗi trả về JSON dạng `{\"detail\": \"...\"}` với mã HTTP tương ứng (400, 401, 403, 404, 409, 422, 429).\n",
+    "contact": {
+      "name": "Đồ án DAMH - Hệ thống bãi giữ xe ANPR"
+    },
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "Hệ thống"
+        ],
+        "summary": "Kiểm tra máy chủ",
+        "description": "Không cần đăng nhập. Dùng để kiểm tra máy chủ API còn chạy.",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/token": {
+      "post": {
+        "tags": [
+          "Xác thực"
+        ],
+        "summary": "Đăng nhập (form - dùng cho nút Authorize)",
+        "description": "Đăng nhập theo chuẩn OAuth2 password flow (dạng form). Nút **Authorize** của Swagger UI gọi API này.",
+        "operationId": "auth_token_api_auth_token_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_auth_token_api_auth_token_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Xác thực"
+        ],
+        "summary": "Đăng nhập (JSON)",
+        "description": "Đăng nhập bằng JSON, trả về Bearer token. Gửi token ở header `Authorization: Bearer <token>`.\nSai mật khẩu quá 5 lần / 5 phút từ một địa chỉ sẽ bị tạm khóa (429).",
+        "operationId": "auth_login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Xác thực"
+        ],
+        "summary": "Thông tin tài khoản đang đăng nhập",
+        "operationId": "auth_me_api_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Xác thực"
+        ],
+        "summary": "Đăng xuất (hủy token)",
+        "operationId": "auth_logout_api_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/auth/password": {
+      "post": {
+        "tags": [
+          "Xác thực"
+        ],
+        "summary": "Đổi mật khẩu",
+        "description": "Cần nhập đúng mật khẩu hiện tại; mật khẩu mới tối thiểu 6 ký tự. Có ghi Audit Log.",
+        "operationId": "auth_password_api_auth_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/lot": {
+      "get": {
+        "tags": [
+          "Bãi xe"
+        ],
+        "summary": "Sơ đồ bãi realtime",
+        "description": "Trạng thái 9 ô đỗ (A1..C3): ô trống / ô có xe, biển số, giờ vào và loại vé (vé tháng / vé lẻ).",
+        "operationId": "lot_api_lot_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/lot/move": {
+      "post": {
+        "tags": [
+          "Bãi xe"
+        ],
+        "summary": "Di dời xe sang ô khác",
+        "description": "Chuyển xe từ ô `from_slot` sang ô trống `to_slot`. Ghi Audit Log (SLOT_MOVED).",
+        "operationId": "lot_move_api_lot_move_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/gate/recognize": {
+      "post": {
+        "tags": [
+          "Cổng"
+        ],
+        "summary": "Nhận diện biển số từ ảnh",
+        "description": "Chạy pipeline YOLO + OCR trên ảnh tải lên, trả về biển đọc được và độ tin cậy.\n**Không** check-in/out: hãy gọi tiếp `POST /api/gate/scan` với biển này (hoặc biển bảo vệ đã sửa).",
+        "operationId": "gate_recognize_api_gate_recognize_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_gate_recognize_api_gate_recognize_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecognizeOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/gate/scan": {
+      "post": {
+        "tags": [
+          "Cổng"
+        ],
+        "summary": "Quét biển: check-in / check-out",
+        "description": "Luồng chính của cổng bãi xe:\n- Biển **chưa** có trong bãi -> **CHECK_IN**, xe vào ô trống ngẫu nhiên (bãi đầy -> `LOT_FULL`).\n- Biển **khớp 100%** xe đang trong bãi -> **CHECK_OUT**, tính phí (vé tháng còn hạn = miễn phí).\n- Biển **lệch <= 1 ký tự** so với xe trong bãi -> **WARN_NEAR** (cảnh báo vàng): bảo vệ đối chiếu rồi gọi\n  `POST /api/gate/confirm-near` (cùng xe) hoặc quét lại.\n- Biển sai định dạng -> 422, bảo vệ nhập lại.",
+        "operationId": "gate_scan_api_gate_scan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/gate/confirm-near": {
+      "post": {
+        "tags": [
+          "Cổng"
+        ],
+        "summary": "Xác nhận cảnh báo vàng = cùng xe -> cho ra",
+        "description": "Sau cảnh báo vàng (`WARN_NEAR`), bảo vệ xác nhận biển ở cổng ra và biển lúc vào là **cùng một xe**.\nHệ thống check-out lượt `log_id` và ghi Audit Log (NEAR_CONFIRMED).",
+        "operationId": "gate_confirm_near_api_gate_confirm_near_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmNearIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/gate/lost-ticket/candidates": {
+      "get": {
+        "tags": [
+          "Cổng"
+        ],
+        "summary": "Mất thẻ: danh sách xe để chọn",
+        "description": "UC4 - Mất thẻ: trả về Top 5 xe có biển giống nhất (hoặc tất cả xe trong bãi) kèm giờ vào, để bảo vệ\nđối chiếu với ảnh lúc vào rồi chọn đúng lượt.",
+        "operationId": "lost_candidates_api_gate_lost_ticket_candidates_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "plate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Biển đọc được tại cổng (có thể sai vài ký tự)",
+              "examples": [
+                "59O1-123.45"
+              ],
+              "default": "",
+              "title": "Plate"
+            },
+            "description": "Biển đọc được tại cổng (có thể sai vài ký tự)"
+          },
+          {
+            "name": "show_all",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "True = trả về TẤT CẢ xe trong bãi",
+              "default": false,
+              "title": "Show All"
+            },
+            "description": "True = trả về TẤT CẢ xe trong bãi"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LostCandidateOut"
+                  },
+                  "title": "Response Lost Candidates Api Gate Lost Ticket Candidates Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/gate/lost-ticket": {
+      "post": {
+        "tags": [
+          "Cổng"
+        ],
+        "summary": "Mất thẻ: cho xe ra và thu phí mất thẻ",
+        "description": "Bảo vệ chọn đúng lượt vào (từ API candidates) -> check-out, thu phí mất thẻ cố định\n(`lost_ticket_fee`). Ghi Audit Log (LOST_TICKET).",
+        "operationId": "lost_checkout_api_gate_lost_ticket_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LostCheckoutIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/history": {
+      "get": {
+        "tags": [
+          "Lượt gửi xe"
+        ],
+        "summary": "Lịch sử ra/vào (phân trang)",
+        "description": "Phân trang **keyset** (nhanh và ổn định khi bảng rất lớn), mới nhất trước.",
+        "operationId": "history_api_history_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Chỉ lấy lượt có id nhỏ hơn giá trị này (lấy từ `next_before` của trang trước)",
+              "title": "Before"
+            },
+            "description": "Chỉ lấy lượt có id nhỏ hơn giá trị này (lấy từ `next_before` của trang trước)"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tìm theo một phần biển số",
+              "examples": [
+                "59D1"
+              ],
+              "title": "Q"
+            },
+            "description": "Tìm theo một phần biển số"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "description": "Số dòng mỗi trang",
+              "default": 50,
+              "title": "Size"
+            },
+            "description": "Số dòng mỗi trang"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/logs/{log_id}/plate": {
+      "patch": {
+        "tags": [
+          "Lượt gửi xe"
+        ],
+        "summary": "Sửa biển xe đang trong bãi",
+        "description": "Dùng khi máy đọc nhầm ký tự lúc check-in. Không cho trùng biển xe khác. Ghi Audit Log (PLATE_CORRECTED).",
+        "operationId": "fix_plate_api_logs__log_id__plate_patch",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "log_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Log Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlateFixIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/logs/{log_id}": {
+      "delete": {
+        "tags": [
+          "Lượt gửi xe"
+        ],
+        "summary": "Hủy lượt vào nhập nhầm",
+        "description": "Xóa lượt vào nhầm: ô trống lại, **không thu phí**. Bảo vệ chỉ hủy được trong `VOID_WINDOW_MIN` phút đầu\n(mặc định 10), Admin hủy bất cứ lúc nào. Ghi Audit Log (CHECKIN_VOIDED).",
+        "operationId": "void_log_api_logs__log_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "log_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Log Id"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "Lý do hủy",
+              "default": "Nhập nhầm",
+              "title": "Reason"
+            },
+            "description": "Lý do hủy"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions": {
+      "get": {
+        "tags": [
+          "Vé tháng"
+        ],
+        "summary": "Danh sách vé tháng",
+        "description": "Kèm trạng thái: `ACTIVE` còn hạn, `SOON` sắp hết, `EXPIRED` hết hạn, `NOT_STARTED` chưa hiệu lực.",
+        "operationId": "subs_list_api_subscriptions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SubOut"
+                  },
+                  "type": "array",
+                  "title": "Response Subs List Api Subscriptions Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Vé tháng"
+        ],
+        "summary": "Thêm vé tháng",
+        "description": "Thêm vé tháng (whitelist - không tính phí khi còn hạn). Một biển không được có hai vé trùng khoảng ngày.\nGhi Audit Log (SUB_ADDED).",
+        "operationId": "subs_add_api_subscriptions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/subscriptions/{sub_id}/renew": {
+      "post": {
+        "tags": [
+          "Vé tháng"
+        ],
+        "summary": "Gia hạn vé tháng +30 ngày",
+        "description": "Tạo kỳ vé mới 30 ngày, bắt đầu hôm nay (nếu đã hết hạn) hoặc ngay sau ngày hết hạn cũ.\nGhi Audit Log (SUB_RENEWED).",
+        "operationId": "subs_renew_api_subscriptions__sub_id__renew_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sub Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscriptions/{sub_id}": {
+      "delete": {
+        "tags": [
+          "Vé tháng"
+        ],
+        "summary": "Xóa vé tháng",
+        "description": "Xóa một vé tháng. Ghi Audit Log (SUB_DELETED).",
+        "operationId": "subs_delete_api_subscriptions__sub_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Sub Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/daily": {
+      "get": {
+        "tags": [
+          "Báo cáo"
+        ],
+        "summary": "Thống kê xe vào/ra và doanh thu theo ngày",
+        "operationId": "stats_daily_api_stats_daily_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Mặc định: 6 ngày trước",
+              "title": "From"
+            },
+            "description": "Mặc định: 6 ngày trước"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Mặc định: hôm nay",
+              "title": "To"
+            },
+            "description": "Mặc định: hôm nay"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DailyStatOut"
+                  },
+                  "title": "Response Stats Daily Api Stats Daily Get"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/performance": {
+      "get": {
+        "tags": [
+          "Báo cáo"
+        ],
+        "summary": "Hiệu năng cổng (NFR <= 1.5 s)",
+        "description": "Trung vị / P95 thời gian xử lý mỗi lượt quét và % lượt đạt mục tiêu.",
+        "operationId": "stats_perf_api_stats_performance_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "tags": [
+          "Báo cáo"
+        ],
+        "summary": "Audit Log (chỉ đọc)",
+        "description": "Bảng `event_log` chỉ thêm, **không sửa/xóa được** (trigger SQLite). Mỗi dòng ghi ai, lúc nào, làm gì.",
+        "operationId": "audit_api_audit_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Phân trang keyset: lấy sự kiện có id nhỏ hơn",
+              "title": "Before"
+            },
+            "description": "Phân trang keyset: lấy sự kiện có id nhỏ hơn"
+          },
+          {
+            "name": "all_events",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "False = chỉ thao tác sửa tay / nhạy cảm; True = tất cả",
+              "default": false,
+              "title": "All Events"
+            },
+            "description": "False = chỉ thao tác sửa tay / nhạy cảm; True = tất cả"
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPageOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/export/revenue": {
+      "get": {
+        "tags": [
+          "Báo cáo"
+        ],
+        "summary": "Xuất doanh thu ra Excel (.xlsx)",
+        "description": "Hai sheet: doanh thu theo ngày và chi tiết từng lượt ra. Ghi Audit Log (EXPORT).",
+        "operationId": "export_revenue_api_export_revenue_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "examples": [
+                "2026-11-01"
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "examples": [
+                "2026-11-30"
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/export/audit": {
+      "get": {
+        "tags": [
+          "Báo cáo"
+        ],
+        "summary": "Xuất Audit Log ra Excel (.xlsx)",
+        "operationId": "export_audit_api_export_audit_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "all_events",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "False = chỉ thao tác nhạy cảm",
+              "default": false,
+              "title": "All Events"
+            },
+            "description": "False = chỉ thao tác nhạy cảm"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File .xlsx",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuditOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "event_time": {
+            "type": "string",
+            "title": "Event Time"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action",
+            "description": "Tên hành động tiếng Việt",
+            "examples": [
+              "Bảo vệ sửa biển máy đọc"
+            ]
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "plate_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plate Text"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "event_time",
+          "event_type",
+          "action"
+        ],
+        "title": "AuditOut"
+      },
+      "AuditPageOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Before"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "AuditPageOut"
+      },
+      "Body_auth_token_api_auth_token_post": {
+        "properties": {
+          "grant_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^password$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grant Type"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "title": "Password"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope",
+            "default": ""
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "format": "password",
+            "title": "Client Secret"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "Body_auth_token_api_auth_token_post"
+      },
+      "Body_gate_recognize_api_gate_recognize_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "Ảnh JPG/PNG chứa biển số"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_gate_recognize_api_gate_recognize_post"
+      },
+      "ConfirmNearIn": {
+        "properties": {
+          "log_id": {
+            "type": "integer",
+            "title": "Log Id",
+            "description": "`near_log_id` trả về từ API quét biển",
+            "examples": [
+              12
+            ]
+          },
+          "read_text": {
+            "type": "string",
+            "title": "Read Text",
+            "description": "Biển máy đọc được ở cổng ra",
+            "default": "",
+            "examples": [
+              "59O1-123.45"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "log_id"
+        ],
+        "title": "ConfirmNearIn"
+      },
+      "DailyStatOut": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "title": "Day",
+            "examples": [
+              "2026-11-26"
+            ]
+          },
+          "vao": {
+            "type": "integer",
+            "title": "Vao",
+            "description": "Số xe vào"
+          },
+          "ra": {
+            "type": "integer",
+            "title": "Ra",
+            "description": "Số xe ra"
+          },
+          "doanh_thu": {
+            "type": "integer",
+            "title": "Doanh Thu",
+            "description": "Doanh thu (đồng)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "vao",
+          "ra",
+          "doanh_thu"
+        ],
+        "title": "DailyStatOut"
+      },
+      "ErrorOut": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "examples": [
+              "Mô tả lỗi"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorOut"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "examples": [
+              "ok"
+            ]
+          },
+          "time": {
+            "type": "string",
+            "title": "Time",
+            "examples": [
+              "2026-11-26 08:00:00"
+            ]
+          },
+          "slots_total": {
+            "type": "integer",
+            "title": "Slots Total",
+            "examples": [
+              9
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "time",
+          "slots_total"
+        ],
+        "title": "HealthOut"
+      },
+      "HistoryOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LogOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Before",
+            "description": "Truyền vào tham số `before` để lấy trang cũ hơn; null = hết"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "HistoryOut"
+      },
+      "LogOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "plate_text": {
+            "type": "string",
+            "title": "Plate Text"
+          },
+          "time_in": {
+            "type": "string",
+            "title": "Time In"
+          },
+          "time_out": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Out"
+          },
+          "slot_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot Code"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "IN",
+              "OUT"
+            ],
+            "title": "Status"
+          },
+          "fee": {
+            "type": "integer",
+            "title": "Fee",
+            "default": 0
+          },
+          "fee_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fee Type"
+          },
+          "in_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Method"
+          },
+          "out_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Out Method"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "plate_text",
+          "time_in",
+          "status"
+        ],
+        "title": "LogOut"
+      },
+      "LoginIn": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username",
+            "examples": [
+              "admin"
+            ]
+          },
+          "password": {
+            "type": "string",
+            "title": "Password",
+            "examples": [
+              "admin123"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginIn"
+      },
+      "LostCandidateOut": {
+        "properties": {
+          "log_id": {
+            "type": "integer",
+            "title": "Log Id"
+          },
+          "plate": {
+            "type": "string",
+            "title": "Plate"
+          },
+          "slot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot"
+          },
+          "time_in": {
+            "type": "string",
+            "title": "Time In"
+          },
+          "distance": {
+            "type": "integer",
+            "title": "Distance",
+            "description": "Khoảng cách Levenshtein tới biển tìm kiếm (càng nhỏ càng giống)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "log_id",
+          "plate",
+          "time_in",
+          "distance"
+        ],
+        "title": "LostCandidateOut"
+      },
+      "LostCheckoutIn": {
+        "properties": {
+          "log_id": {
+            "type": "integer",
+            "title": "Log Id",
+            "description": "Lượt vào bảo vệ chọn là đúng xe",
+            "examples": [
+              12
+            ]
+          },
+          "read_text": {
+            "type": "string",
+            "title": "Read Text",
+            "description": "Biển đọc được tại cổng (nếu có)",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "log_id"
+        ],
+        "title": "LostCheckoutIn"
+      },
+      "LotOut": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "examples": [
+              9
+            ]
+          },
+          "occupied": {
+            "type": "integer",
+            "title": "Occupied",
+            "examples": [
+              2
+            ]
+          },
+          "free": {
+            "type": "integer",
+            "title": "Free",
+            "examples": [
+              7
+            ]
+          },
+          "slots": {
+            "items": {
+              "$ref": "#/components/schemas/SlotOut"
+            },
+            "type": "array",
+            "title": "Slots"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "occupied",
+          "free",
+          "slots"
+        ],
+        "title": "LotOut"
+      },
+      "MessageOut": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "examples": [
+              "Đã thực hiện"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "MessageOut"
+      },
+      "MoveIn": {
+        "properties": {
+          "from_slot": {
+            "type": "string",
+            "title": "From Slot",
+            "examples": [
+              "A1"
+            ]
+          },
+          "to_slot": {
+            "type": "string",
+            "title": "To Slot",
+            "examples": [
+              "B2"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "from_slot",
+          "to_slot"
+        ],
+        "title": "MoveIn"
+      },
+      "PasswordIn": {
+        "properties": {
+          "old_password": {
+            "type": "string",
+            "title": "Old Password"
+          },
+          "new_password": {
+            "type": "string",
+            "minLength": 6,
+            "title": "New Password",
+            "description": "Tối thiểu 6 ký tự"
+          }
+        },
+        "type": "object",
+        "required": [
+          "old_password",
+          "new_password"
+        ],
+        "title": "PasswordIn"
+      },
+      "PerfOut": {
+        "properties": {
+          "target_seconds": {
+            "type": "number",
+            "title": "Target Seconds",
+            "examples": [
+              1.5
+            ]
+          },
+          "n": {
+            "type": "integer",
+            "title": "N",
+            "description": "Số lượt quét đã đo"
+          },
+          "p50_ms": {
+            "type": "number",
+            "title": "P50 Ms"
+          },
+          "p95_ms": {
+            "type": "number",
+            "title": "P95 Ms"
+          },
+          "avg_ms": {
+            "type": "number",
+            "title": "Avg Ms"
+          },
+          "max_ms": {
+            "type": "number",
+            "title": "Max Ms"
+          },
+          "ok_pct": {
+            "type": "number",
+            "title": "Ok Pct",
+            "description": "% lượt đạt mục tiêu (nhận diện + mở barrier <= 1.5 s)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_seconds",
+          "n",
+          "p50_ms",
+          "p95_ms",
+          "avg_ms",
+          "max_ms",
+          "ok_pct"
+        ],
+        "title": "PerfOut"
+      },
+      "PlateFixIn": {
+        "properties": {
+          "plate": {
+            "type": "string",
+            "title": "Plate",
+            "description": "Biển đúng",
+            "examples": [
+              "59D1-123.45"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "plate"
+        ],
+        "title": "PlateFixIn"
+      },
+      "RecognizeOut": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Biển đã định dạng",
+            "default": "",
+            "examples": [
+              "59D1-123.45"
+            ]
+          },
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "description": "Biển chỉ gồm chữ hoa + số",
+            "default": "",
+            "examples": [
+              "59D112345"
+            ]
+          },
+          "valid": {
+            "type": "boolean",
+            "title": "Valid",
+            "description": "Đúng định dạng và độ tin cậy đạt ngưỡng"
+          },
+          "det_conf": {
+            "type": "number",
+            "title": "Det Conf",
+            "description": "Độ tin cậy dò khung biển (0..1)"
+          },
+          "ocr_conf": {
+            "type": "number",
+            "title": "Ocr Conf",
+            "description": "Độ tin cậy đọc ký tự (0..1)"
+          },
+          "box": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Box",
+            "description": "Khung biển [x1, y1, x2, y2] trên ảnh"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": ""
+          },
+          "ms": {
+            "type": "number",
+            "title": "Ms",
+            "description": "Thời gian nhận diện (ms)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valid",
+          "det_conf",
+          "ocr_conf",
+          "ms"
+        ],
+        "title": "RecognizeOut"
+      },
+      "ScanIn": {
+        "properties": {
+          "plate": {
+            "type": "string",
+            "title": "Plate",
+            "description": "Biển số (máy đọc được hoặc bảo vệ nhập tay). Chấp nhận có/không dấu `-` `.`",
+            "examples": [
+              "59D1-123.45"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "AUTO",
+              "MANUAL"
+            ],
+            "title": "Method",
+            "description": "AUTO = máy đọc, MANUAL = bảo vệ nhập tay",
+            "default": "AUTO"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plate"
+        ],
+        "title": "ScanIn"
+      },
+      "ScanOut": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "CHECK_IN",
+              "CHECK_OUT",
+              "WARN_NEAR",
+              "LOT_FULL"
+            ],
+            "title": "Action",
+            "description": "CHECK_IN = cho vào; CHECK_OUT = cho ra + tính phí; WARN_NEAR = biển lệch 1 ký tự (cảnh báo vàng, cần xác nhận); LOT_FULL = bãi đầy"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "plate": {
+            "type": "string",
+            "title": "Plate",
+            "default": ""
+          },
+          "slot": {
+            "type": "string",
+            "title": "Slot",
+            "default": ""
+          },
+          "fee": {
+            "type": "integer",
+            "title": "Fee",
+            "description": "Phí phải thu (đồng) khi CHECK_OUT",
+            "default": 0
+          },
+          "fee_type": {
+            "type": "string",
+            "title": "Fee Type",
+            "description": "SUBSCRIPTION | REGULAR | EXPIRED_SUB | LOST_TICKET",
+            "default": ""
+          },
+          "minutes": {
+            "type": "integer",
+            "title": "Minutes",
+            "default": 0
+          },
+          "log_id": {
+            "type": "integer",
+            "title": "Log Id",
+            "default": 0
+          },
+          "distance": {
+            "type": "integer",
+            "title": "Distance",
+            "description": "WARN_NEAR: khoảng cách Levenshtein tới biển đang trong bãi",
+            "default": 0
+          },
+          "near_log_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Near Log Id",
+            "description": "WARN_NEAR: lượt đang trong bãi có biển gần giống"
+          },
+          "near_plate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Near Plate"
+          },
+          "subscription": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubStatusOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "message"
+        ],
+        "title": "ScanOut"
+      },
+      "SlotOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "examples": [
+              "A1"
+            ]
+          },
+          "occupied": {
+            "type": "boolean",
+            "title": "Occupied"
+          },
+          "log_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Id"
+          },
+          "plate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plate",
+            "examples": [
+              "59D1-123.45"
+            ]
+          },
+          "time_in": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time In",
+            "examples": [
+              "2026-11-26 07:45:10"
+            ]
+          },
+          "subscription": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SubStatusOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "occupied"
+        ],
+        "title": "SlotOut"
+      },
+      "SubIn": {
+        "properties": {
+          "plate": {
+            "type": "string",
+            "title": "Plate",
+            "examples": [
+              "59D1-123.45"
+            ]
+          },
+          "owner": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Owner",
+            "default": "",
+            "examples": [
+              "Nguyễn Văn An"
+            ]
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Start Date",
+            "examples": [
+              "2026-11-26"
+            ]
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "title": "End Date",
+            "examples": [
+              "2026-12-26"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "plate",
+          "start_date",
+          "end_date"
+        ],
+        "title": "SubIn"
+      },
+      "SubOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "plate": {
+            "type": "string",
+            "title": "Plate"
+          },
+          "owner": {
+            "type": "string",
+            "title": "Owner"
+          },
+          "start_date": {
+            "type": "string",
+            "title": "Start Date"
+          },
+          "end_date": {
+            "type": "string",
+            "title": "End Date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SOON",
+              "EXPIRED",
+              "NOT_STARTED"
+            ],
+            "title": "Status",
+            "description": "SOON = còn hạn nhưng sắp hết (<= SUB_WARN_DAYS ngày)"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days",
+            "description": "Số ngày còn lại (ACTIVE/SOON) hoặc đã quá hạn (EXPIRED)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "plate",
+          "owner",
+          "start_date",
+          "end_date",
+          "status",
+          "days"
+        ],
+        "title": "SubOut"
+      },
+      "SubStatusOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "EXPIRED",
+              "NOT_STARTED",
+              "NONE"
+            ],
+            "title": "Status",
+            "description": "ACTIVE = còn hạn, EXPIRED = hết hạn, NOT_STARTED = chưa hiệu lực, NONE = vé lẻ"
+          },
+          "soon": {
+            "type": "boolean",
+            "title": "Soon",
+            "description": "True nếu vé còn hạn nhưng sắp hết (<= SUB_WARN_DAYS ngày)"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days",
+            "description": "ACTIVE: còn mấy ngày; EXPIRED: đã hết hạn mấy ngày"
+          },
+          "ref_date": {
+            "type": "string",
+            "title": "Ref Date",
+            "description": "ACTIVE/EXPIRED: ngày hết hạn; NOT_STARTED: ngày bắt đầu (YYYY-MM-DD)",
+            "default": ""
+          },
+          "owner": {
+            "type": "string",
+            "title": "Owner",
+            "default": ""
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "examples": [
+              "VÉ THÁNG còn 23 ngày (đến 19/12/2026)"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "soon",
+          "days",
+          "label"
+        ],
+        "title": "SubStatusOut"
+      },
+      "TokenOut": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token",
+            "description": "Gửi kèm header `Authorization: Bearer <token>`"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer",
+            "examples": [
+              "bearer"
+            ]
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In",
+            "description": "Số giây không thao tác thì token hết hạn",
+            "examples": [
+              1800
+            ]
+          },
+          "username": {
+            "type": "string",
+            "title": "Username",
+            "examples": [
+              "admin"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "GUARD"
+            ],
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "expires_in",
+          "username",
+          "role"
+        ],
+        "title": "TokenOut"
+      },
+      "UserOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ADMIN",
+              "GUARD"
+            ],
+            "title": "Role"
+          },
+          "using_default_password": {
+            "type": "boolean",
+            "title": "Using Default Password",
+            "description": "True nếu vẫn dùng mật khẩu mặc định -> nên đổi ngay"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "role",
+          "using_default_password"
+        ],
+        "title": "UserOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "OAuth2PasswordBearer": {
+        "type": "oauth2",
+        "description": "Nhập tài khoản/mật khẩu hệ thống (admin / admin123).",
+        "flows": {
+          "password": {
+            "scopes": {},
+            "tokenUrl": "/api/auth/token"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Hệ thống",
+      "description": "Kiểm tra máy chủ còn sống."
+    },
+    {
+      "name": "Xác thực",
+      "description": "Đăng nhập lấy Bearer token, xem tài khoản, đổi mật khẩu."
+    },
+    {
+      "name": "Bãi xe",
+      "description": "Sơ đồ bãi 3x3 theo thời gian thực, di dời xe giữa các ô."
+    },
+    {
+      "name": "Cổng",
+      "description": "Nhận diện biển từ ảnh, quét biển (check-in / check-out), cảnh báo vàng, mất thẻ."
+    },
+    {
+      "name": "Lượt gửi xe",
+      "description": "Sửa biển / hủy lượt vào nhập nhầm, lịch sử ra/vào."
+    },
+    {
+      "name": "Vé tháng",
+      "description": "Chỉ ADMIN: thêm, gia hạn, xóa vé tháng; trạng thái còn hạn / sắp hết / hết hạn."
+    },
+    {
+      "name": "Báo cáo",
+      "description": "Chỉ ADMIN: thống kê theo ngày, hiệu năng cổng, Audit Log, xuất Excel."
+    }
+  ],
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Máy bảo vệ (đổi IP theo mạng LAN)"
+    }
+  ]
+}

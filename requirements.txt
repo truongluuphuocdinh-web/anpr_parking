@@ -1,0 +1,13 @@
+opencv-python
+numpy
+Pillow
+openpyxl
+ultralytics      # YOLO (tùy chọn nhưng nên dùng)
+rapidocr-onnxruntime   # OCR chính (nhẹ, mô hình có sẵn trong gói, không cần tải)
+easyocr          # OCR dự phòng (tùy chọn)
+pytest           # chỉ để chạy test
+yolov5           # nạp trọng số YOLOv5 gốc (LP_detector.pt / LP_ocr.pt của các repo GitHub biển số VN)
+fastapi          # REST API + Swagger UI (api_server.py)
+uvicorn          # máy chủ chạy API
+python-multipart # nhận form đăng nhập / tải ảnh lên
+httpx            # chỉ để chạy test API
